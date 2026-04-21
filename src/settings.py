@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     database_url: str
     auth_service_url: str
     api_token: str
+    jwt_secret: str
 
     model_config = {"env_file": ".env"}
 

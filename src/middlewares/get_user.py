@@ -5,6 +5,7 @@ from typing import Awaitable, Callable
 from functools import wraps
 from src.settings import settings
 from authentication_types.models import User
+import jwt
 
 def get_user(handler: Callable[[Request], Awaitable[StreamResponse]]):
     @wraps(handler)
@@ -12,12 +13,15 @@ def get_user(handler: Callable[[Request], Awaitable[StreamResponse]]):
         jwt = request.headers.get("Authorization", "")
         if not jwt:
             raise HTTPUnauthorized(body='{"error": "missing jwt"}')
-        async with ClientSession(settings.auth_service_url, headers={"Authorization": jwt}) as session:
-            async with session.get("/me") as req:
-                if req.status != 200:
-                    raise HTTPServiceUnavailable(body='{"error": "auth failed"}')
-                user = User(**await req.json())
-                request["user"] = user
-                return await handler(request)
+        payload = decode_access_token(jwt)
+        request["user"] = User(user_id=payload["sub"], pseudo=payload["pseudo"])
+        return await handler(request)
     
     return wrapper
+
+
+def decode_access_token(token: str) -> dict:
+    payload = jwt.decode(token, settings.jwt_secret, algorithms=["HS256"])
+    if payload.get("type") != "access":
+        raise jwt.InvalidTokenError("Invalid token type")
+    return payload
