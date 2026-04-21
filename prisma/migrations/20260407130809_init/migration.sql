@@ -1,6 +1,6 @@
 -- CreateTable
 CREATE TABLE "currency" (
-    "id" UUID NOT NULL,
+    "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "name" TEXT NOT NULL,
     "description" TEXT,
     "claimRate" INTEGER NOT NULL,
@@ -29,7 +29,7 @@ CREATE TABLE "claims" (
 
 -- CreateTable
 CREATE TABLE "log" (
-    "id" UUID NOT NULL,
+    "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "userId" INTEGER NOT NULL,
     "currencyId" UUID NOT NULL,
     "amount" INTEGER NOT NULL,
