@@ -10,7 +10,7 @@ generator client {
 }
 
 model Currency {
-    id          String   @id @default(uuid()) @db.Uuid
+    id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
     name        String   @unique
     description String?
     claimRate   Int
@@ -44,7 +44,7 @@ model Claim {
 }
 
 model Log {
-    id         String   @id @default(uuid()) @db.Uuid
+    id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
     userId     Int
     currencyId String   @db.Uuid
     amount     Int
@@ -56,4 +56,14 @@ model Log {
 
     @@index([userId, currencyId])
     @@map("log")
+}
+
+model IdempotencyKey {
+    key        String   @db.VarChar(255)
+    userId     Int
+    statusCode Int
+    createdAt  DateTime @default(now())
+
+    @@id([key, userId])
+    @@map("idempotency_key")
 }
