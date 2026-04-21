@@ -15,7 +15,7 @@ from ..app import routes
 from ..services.claim import claim as claim_service, get_claimable
 from ..services.transaction import burn_wallet, credit_wallet
 from ..services.idempotency import get_idempotency_status, store_idempotency_key
-
+from ..errors import missing_currency_error
 
 @routes.get("/claim")
 @require_auth
@@ -25,7 +25,7 @@ async def claim(request: Request):
     user: User = request["user"]
     currency = request.query.get("currency", "")
     if not currency:
-        return json_response({"error": "missing currency"}, status=400)
+        return missing_currency_error
     
     try:
         claimed = await claim_service(prisma, user, currency)
@@ -87,7 +87,7 @@ async def balance(request: Request):
     user: User = request["user"]
     currency = request.query.get("currency")
     if not currency:
-        return json_response({"error": "missing currency"}, status=400)
+        return missing_currency_error
     
     try:
         balance = await get_balance(prisma, user, currency)
@@ -104,7 +104,7 @@ async def claimable(request: Request):
     user: User = request["user"]
     currency = request.query.get("currency")
     if not currency:
-        return json_response({"error": "missing currency"}, status=400)
+        return missing_currency_error
 
     claimable = await get_claimable(prisma, user, currency)
     return json_response({"claimable": claimable})
