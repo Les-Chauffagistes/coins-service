@@ -13,5 +13,7 @@ jobs:
     with:
       service-name: coins-service
     secrets:
-      ORG_PAT: ${{ secrets.ORG_PAT }}
+      REGISTRY_USER:     ${{ secrets.REGISTRY_USER }}
+      REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+ 
  
