@@ -7,7 +7,13 @@ from src.v1.schemas.transactionPayload import BurnPayload, CreditPayload
 
 class TestCreditPayload:
     def test_valide(self):
-        p = CreditPayload(amount=100, currency="HEAT", source="system", reason="reward")
+        p = CreditPayload(
+            amount=100,
+            currency="HEAT",
+            source="system",
+            reason="reward",
+            idempotencyKey="idem-credit-1",
+        )
         assert p.amount == 100
         assert p.currency == "HEAT"
         assert p.source == "system"
@@ -23,13 +29,25 @@ class TestCreditPayload:
 
     def test_amount_negatif_accepte(self):
         """Pydantic ne contraint pas le signe ; c'est à la couche service de valider."""
-        p = CreditPayload(amount=-10, currency="HEAT", source="s", reason="r")
+        p = CreditPayload(
+            amount=-10,
+            currency="HEAT",
+            source="s",
+            reason="r",
+            idempotencyKey="idem-credit-2",
+        )
         assert p.amount == -10
 
 
 class TestBurnPayload:
     def test_valide(self):
-        p = BurnPayload(amount=50, currency="HEAT", destination="burned", reason="penalty")
+        p = BurnPayload(
+            amount=50,
+            currency="HEAT",
+            destination="burned",
+            reason="penalty",
+            idempotencyKey="idem-burn-1",
+        )
         assert p.amount == 50
         assert p.destination == "burned"
 
