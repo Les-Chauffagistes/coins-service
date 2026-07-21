@@ -7,6 +7,7 @@ asyncpg
 pytest
 pytest-asyncio
 pytest-cov
+testcontainers
 requests
 pydantic_settings
 pysonar
