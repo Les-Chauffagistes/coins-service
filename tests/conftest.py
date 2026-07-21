@@ -6,10 +6,18 @@ from dotenv import load_dotenv
 import subprocess, os, sys
 from shutil import which
 from pathlib import Path
-import asyncpg
+from testcontainers.postgres import PostgresContainer
 
 
 load_dotenv(".env.test", override=True)
+
+
+def _to_prisma_database_url(database_url: str) -> str:
+    if database_url.startswith("postgresql+psycopg2://"):
+        return database_url.replace("postgresql+psycopg2://", "postgresql://", 1)
+    return database_url
+
+
 def _resolve_prisma_cli() -> str:
     prisma = which("prisma")
     if prisma:
@@ -28,41 +36,26 @@ def _resolve_prisma_cli() -> str:
     )
 
 
-def _ensure_test_db():
-    """Crée la BDD de test et applique le schéma Prisma si nécessaire."""
-    db_url = os.environ["DATABASE_URL"]
-    db_name = db_url.rsplit("/", 1)[-1].split("?")[0]
-    server_url = db_url.rsplit("/", 1)[0] + "/template1"
-
-    import asyncio
-
-    async def _create_db():
-        conn = await asyncpg.connect(server_url)
-        try:
-            exists = await conn.fetchval(
-                "SELECT 1 FROM pg_database WHERE datname = $1", db_name
-            )
-            if not exists:
-                print("creating", db_name)
-                await conn.execute(f'CREATE DATABASE "{db_name}"')
-        finally:
-            await conn.close()
-
-    asyncio.run(_create_db())
-
+def _push_prisma_schema(db_url: str):
+    """Applique le schéma Prisma dans la base de tests."""
     subprocess.run(
         [_resolve_prisma_cli(), "db", "push", "--skip-generate"],
         env={**os.environ, "DATABASE_URL": db_url},
         check=True,
-        capture_output=True,
     )
 
 
-_ensure_test_db()
+@pytest.fixture(scope="session")
+def postgres_test_database():
+    with PostgresContainer("postgres:18.1-alpine3.23") as postgres:
+        db_url = _to_prisma_database_url(postgres.get_connection_url())
+        os.environ["DATABASE_URL"] = db_url
+        _push_prisma_schema(db_url)
+        yield db_url
 
 # NE PAS RÉUTILISER. UTILISER prisma_tx SI BESOIN DE PRISMA
 @pytest_asyncio.fixture(scope="session", loop_scope="session")
-async def prisma_client():
+async def prisma_client(postgres_test_database: str):
     prisma = Prisma()
     await prisma.connect()
     yield prisma
