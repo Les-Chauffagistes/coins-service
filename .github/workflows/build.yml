@@ -1,23 +1,30 @@
 name: CI
- 
+
 on:
   push:
-    branches: ["**"]
-    tags: ["v*.*.*"]
+    branches: [ "**" ]
+    tags: [ "v*.*.*" ]
   pull_request:
 
- 
+
 jobs:
   test:
-    uses: Les-Chauffagistes/deploy/.github/workflows/test.yml@develop
+    uses: Les-Chauffagistes/deploy/.github/workflows/test.yml@2e32eae14ae1affc59d3b271735fb5fb0e7e4fb3
     with:
       python-version: '3.12'
-    secrets: inherit
+    secrets:
+      REGISTRY_USER: ${{ secrets.REGISTRY_USER }}
+      REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+      ORG_PAT: ${{ secrets.ORG_PAT }}
+
 
   build-push:
     if: github.event_name == 'push'
     needs: test
-    uses: Les-Chauffagistes/deploy/.github/workflows/build.yml@develop
+    uses: Les-Chauffagistes/deploy/.github/workflows/build.yml@2e32eae14ae1affc59d3b271735fb5fb0e7e4fb3
     with:
       service-name: coins-service
-    secrets: inherit
+    secrets:
+      REGISTRY_USER: ${{ secrets.REGISTRY_USER }}
+      REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+      ORG_PAT: ${{ secrets.ORG_PAT }}
