@@ -30,10 +30,10 @@ class TestGetClaimable:
 
     async def test_retourne_tokens_accumules(self, prisma_client: Prisma):
         currency = await prisma_client.currency.create(
-            {"name": "CLAIMABLE_TEST_2", "claimRate": 1, "claimLimit": 10_000}
+            {"name": "CLAIMABLE_TEST_2", "claimRate": 60, "claimLimit": 10_000}
         )
-        # Dernier claim il y a 60 secondes → 60 tokens attendus
-        past = datetime.now(timezone.utc) - timedelta(seconds=60)
+        # Dernier claim il y a une heure → 60 tokens attendus
+        past = datetime.now(timezone.utc) - timedelta(hours=1)
         await prisma_client.claim.create(
             {
                 "currencyId": currency.id,
@@ -52,7 +52,7 @@ class TestGetClaimable:
         currency = await prisma_client.currency.create(
             {"name": "CLAIMABLE_TEST_3", "claimRate": 100, "claimLimit": 200}
         )
-        past = datetime.now(timezone.utc) - timedelta(seconds=10_000)
+        past = datetime.now(timezone.utc) - timedelta(hours=10)
         await prisma_client.claim.create(
             {"currencyId": currency.id, "userId": 102, "lastClaimAt": past}
         )
@@ -69,11 +69,49 @@ class TestGetClaimable:
 
 
 class TestClaim:
+    async def test_premier_claim_cree_le_suivi_et_ne_peut_pas_etre_repete(
+        self, prisma_client: Prisma
+    ):
+        currency = await prisma_client.currency.create(
+            {"name": "CLAIM_TEST_FIRST", "claimRate": 120, "claimLimit": 120}
+        )
+        user = _user(199)
+        try:
+            first = await claim(prisma_client, user, "CLAIM_TEST_FIRST")
+            second = await claim(prisma_client, user, "CLAIM_TEST_FIRST")
+
+            claim_record = await prisma_client.claim.find_unique(
+                where={
+                    "currencyId_userId": {
+                        "currencyId": currency.id,
+                        "userId": 199,
+                    }
+                }
+            )
+            wallet = await prisma_client.wallet.find_unique(
+                where={
+                    "currencyId_userId": {
+                        "currencyId": currency.id,
+                        "userId": 199,
+                    }
+                }
+            )
+
+            assert first == 120
+            assert second == 0
+            assert claim_record is not None
+            assert wallet is not None
+            assert wallet.balance == 120
+        finally:
+            await prisma_client.wallet.delete_many(where={"currencyId": currency.id})
+            await prisma_client.claim.delete_many(where={"currencyId": currency.id})
+            await prisma_client.currency.delete(where={"id": currency.id})
+
     async def test_credite_le_wallet_et_retourne_le_montant(self, prisma_client: Prisma):
         currency = await prisma_client.currency.create(
-            {"name": "CLAIM_TEST_1", "claimRate": 1, "claimLimit": 1000}
+            {"name": "CLAIM_TEST_1", "claimRate": 100, "claimLimit": 1000}
         )
-        past = datetime.now(timezone.utc) - timedelta(seconds=100)
+        past = datetime.now(timezone.utc) - timedelta(hours=1)
         await prisma_client.claim.create(
             {"currencyId": currency.id, "userId": 200, "lastClaimAt": past}
         )
@@ -119,9 +157,9 @@ class TestClaim:
     async def test_claim_successif_accumule_correctement(self, prisma_client: Prisma):
         """Après un premier claim, le second n'accumule que depuis le dernier claim."""
         currency = await prisma_client.currency.create(
-            {"name": "CLAIM_TEST_3", "claimRate": 1, "claimLimit": 10_000}
+            {"name": "CLAIM_TEST_3", "claimRate": 60, "claimLimit": 10_000}
         )
-        past = datetime.now(timezone.utc) - timedelta(seconds=30)
+        past = datetime.now(timezone.utc) - timedelta(minutes=30)
         await prisma_client.claim.create(
             {"currencyId": currency.id, "userId": 202, "lastClaimAt": past}
         )
@@ -129,9 +167,9 @@ class TestClaim:
             first = await claim(prisma_client, _user(202), "CLAIM_TEST_3")
             assert first == 30
 
-            # Immédiatement après, presque rien ne s'est accumulé
+            # Immédiatement après, aucun coin entier ne s'est accumulé
             second = await claim(prisma_client, _user(202), "CLAIM_TEST_3")
-            assert second < 2  # moins d'une seconde s'est écoulée
+            assert second == 0
         finally:
             await prisma_client.wallet.delete_many(where={"currencyId": currency.id})
             await prisma_client.claim.delete_many(where={"currencyId": currency.id})

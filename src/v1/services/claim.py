@@ -6,12 +6,17 @@ from datetime import datetime, timezone
 from ..services.transaction import add_to_wallet
 
 
+SECONDS_PER_HOUR = 60 * 60
+
+
 def _compute_claimable(now: datetime, last_claim: Claim | None, currency: Currency) -> int:
     if not last_claim:
         return currency.claimLimit
     return int(
         min(
-            (now - last_claim.lastClaimAt).total_seconds() * currency.claimRate,
+            (now - last_claim.lastClaimAt).total_seconds()
+            * currency.claimRate
+            / SECONDS_PER_HOUR,
             currency.claimLimit,
         )
     )
@@ -45,17 +50,27 @@ async def get_claimable(db: Prisma, user: User, currency_name: str) -> int:
 
 async def claim(db: Prisma, user: User, currency_name: str):
     currency = await get_currency_by_name(db, currency_name)
-    claimable = await get_claimable_for_currency(db, user, currency)
+    user_id = int(user.user_id)
+    claimed_at = datetime.now(timezone.utc)
 
     async with db.tx() as tx:
-        await tx.claim.update(
+        last_claim = await get_last_claim(tx, user, currency)
+        claimable = _compute_claimable(claimed_at, last_claim, currency)
+        await tx.claim.upsert(
             where={
                 "currencyId_userId": {
                     "currencyId": currency.id,
-                    "userId": int(user.user_id),
+                    "userId": user_id,
                 }
             },
-            data={"lastClaimAt": datetime.now(timezone.utc)},
+            data={
+                "create": {
+                    "currencyId": currency.id,
+                    "userId": user_id,
+                    "lastClaimAt": claimed_at,
+                },
+                "update": {"lastClaimAt": claimed_at},
+            },
         )
         await add_to_wallet(tx, user, claimable, currency)
     return claimable

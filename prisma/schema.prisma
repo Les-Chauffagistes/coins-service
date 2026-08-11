@@ -13,6 +13,7 @@ model Currency {
     id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
     name        String   @unique
     description String?
+    /// Number of coins accrued per hour.
     claimRate   Int
     claimLimit  Int
     wallets     Wallet[]
