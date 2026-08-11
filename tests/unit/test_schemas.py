@@ -2,7 +2,7 @@
 import pytest
 from pydantic import ValidationError
 
-from src.v1.schemas.transactionPayload import BurnPayload, CreditPayload
+from src.v1.schemas.transactionPayload import BurnPayload, CreditPayload, TransferPayload
 
 
 class TestCreditPayload:
@@ -58,3 +58,33 @@ class TestBurnPayload:
     def test_amount_doit_etre_un_entier(self):
         with pytest.raises(ValidationError):
             BurnPayload(amount=3.14, currency="HEAT", destination="d", reason="r")
+
+
+class TestTransferPayload:
+    def test_valide(self):
+        p = TransferPayload(
+            amount=100,
+            currency="HEAT",
+            fromUserId=42,
+            toUserId=-42,
+            reason="bet placed",
+            idempotencyKey="bet:42:abc",
+        )
+        assert p.fromUserId == 42
+        assert p.toUserId == -42
+
+    def test_userid_negatif_accepte(self):
+        """Les comptes système/escrow vivent sous un userId négatif."""
+        p = TransferPayload(
+            amount=100,
+            currency="HEAT",
+            fromUserId=-42,
+            toUserId=7,
+            reason="settle",
+            idempotencyKey="settle:42:7",
+        )
+        assert p.fromUserId == -42
+
+    def test_champ_manquant_leve_une_erreur(self):
+        with pytest.raises(ValidationError):
+            TransferPayload(amount=100, currency="HEAT", fromUserId=1, toUserId=2, reason="r")

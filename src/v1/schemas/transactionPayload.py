@@ -14,3 +14,11 @@ class BurnPayload(BaseModel):
     destination: str
     reason: str
     idempotencyKey: str
+
+class TransferPayload(BaseModel):
+    amount: int
+    currency: str
+    fromUserId: int
+    toUserId: int
+    reason: str
+    idempotencyKey: str
