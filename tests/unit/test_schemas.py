@@ -27,16 +27,25 @@ class TestCreditPayload:
         with pytest.raises(ValidationError):
             CreditPayload(amount="pas_un_int", currency="HEAT", source="s", reason="r")
 
-    def test_amount_negatif_accepte(self):
-        """Pydantic ne contraint pas le signe ; c'est à la couche service de valider."""
-        p = CreditPayload(
-            amount=-10,
-            currency="HEAT",
-            source="s",
-            reason="r",
-            idempotencyKey="idem-credit-2",
-        )
-        assert p.amount == -10
+    def test_amount_negatif_rejete(self):
+        with pytest.raises(ValidationError):
+            CreditPayload(
+                amount=-10,
+                currency="HEAT",
+                source="s",
+                reason="r",
+                idempotencyKey="idem-credit-2",
+            )
+
+    def test_amount_zero_rejete(self):
+        with pytest.raises(ValidationError):
+            CreditPayload(
+                amount=0,
+                currency="HEAT",
+                source="s",
+                reason="r",
+                idempotencyKey="idem-credit-3",
+            )
 
 
 class TestBurnPayload:
@@ -58,6 +67,10 @@ class TestBurnPayload:
     def test_amount_doit_etre_un_entier(self):
         with pytest.raises(ValidationError):
             BurnPayload(amount=3.14, currency="HEAT", destination="d", reason="r")
+
+    def test_amount_negatif_rejete(self):
+        with pytest.raises(ValidationError):
+            BurnPayload(amount=-50, currency="HEAT", destination="burned", reason="penalty")
 
 
 class TestTransferPayload:
@@ -88,3 +101,14 @@ class TestTransferPayload:
     def test_champ_manquant_leve_une_erreur(self):
         with pytest.raises(ValidationError):
             TransferPayload(amount=100, currency="HEAT", fromUserId=1, toUserId=2, reason="r")
+
+    def test_amount_negatif_rejete(self):
+        with pytest.raises(ValidationError):
+            TransferPayload(
+                amount=-100,
+                currency="HEAT",
+                fromUserId=-42,
+                toUserId=7,
+                reason="settle",
+                idempotencyKey="settle:42:7",
+            )

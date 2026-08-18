@@ -12,7 +12,7 @@ from src.middlewares.authorization import require_auth
 from ..services.balance import get_balance, get_balance_by_id
 from ..schemas.transactionPayload import CreditPayload, BurnPayload, TransferPayload
 from ..app import routes
-from ..services.claim import claim as claim_service, get_claimable
+from ..services.claim import claim as claim_service, get_claimable, ClaimConflictError
 from ..services.transaction import burn_wallet, credit_wallet, transfer_wallet
 from ..services.idempotency import get_idempotency_status, store_idempotency_key
 from ..errors import missing_currency_error
@@ -30,7 +30,10 @@ async def claim(request: Request):
     try:
         claimed = await claim_service(prisma, user, currency)
         return json_response({"claimed": claimed})
-    
+
+    except ClaimConflictError:
+        return json_response({"error": "concurrent claim, retry"}, status=409)
+
     except ValueError:
         return json_response({"error": "currency not found"}, status=400)
 
@@ -64,8 +67,14 @@ async def credit(request: Request):
 async def burn(request: Request):
     prisma: Prisma = app["prisma"]
     user: User = request["user"]
-    payload = await request.json()
-    parsed_payload = BurnPayload(**payload)
+    try:
+        payload = await request.json()
+        parsed_payload = BurnPayload(**payload)
+    except JSONDecodeError:
+        return json_response({"error": "pasing json failed"}, status=400)
+    except ValidationError:
+        log.error()
+        return json_response({"error": "bad request"}, status=400)
 
     existing_status = await get_idempotency_status(prisma, parsed_payload.idempotencyKey, int(user.user_id))
     if existing_status is not None:
@@ -77,6 +86,8 @@ async def burn(request: Request):
             await store_idempotency_key(tx, parsed_payload.idempotencyKey, int(user.user_id), 204)
     except DataError:
         return json_response({"error": "insufficient balance"}, status=400)
+    except ValueError as e:
+        return json_response({"error": str(e)}, status=400)
     return HTTPNoContent()
 
 @routes.post("/transfer")

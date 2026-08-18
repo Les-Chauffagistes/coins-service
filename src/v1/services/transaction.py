@@ -63,6 +63,9 @@ async def remove_from_wallet(tx: Prisma, user: User, amount: int, currency: Curr
 
 
 async def credit_wallet(tx: Prisma, user: User, amount: int, currency_name: str, source: str, reason: str):
+    if amount <= 0:
+        raise ValueError("amount must be positive")
+
     currency = await tx.currency.find_unique(where={"name": currency_name})
     if not currency:
         raise ValueError("Currency not found")
@@ -71,6 +74,9 @@ async def credit_wallet(tx: Prisma, user: User, amount: int, currency_name: str,
     return await add_to_wallet(tx, user, amount, currency)
 
 async def burn_wallet(tx: Prisma, user: User, amount: int, currency_name: str, destination: str, reason: str):
+    if amount <= 0:
+        raise ValueError("amount must be positive")
+
     currency = await tx.currency.find_unique(where={"name": currency_name})
     if not currency:
         raise ValueError("Currency not found")
@@ -89,6 +95,9 @@ async def transfer_wallet(tx: Prisma, from_user_id: int, to_user_id: int, amount
     échoue (solde insuffisant -> contrainte CHECK), tout est annulé, l'un ne peut
     jamais arriver sans l'autre.
     """
+    if amount <= 0:
+        raise ValueError("amount must be positive")
+
     currency = await tx.currency.find_unique(where={"name": currency_name})
     if not currency:
         raise ValueError("Currency not found")

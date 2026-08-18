@@ -44,6 +44,13 @@ class TestCreditWallet:
         with pytest.raises(ValueError):
             await credit_wallet(prisma_tx, _user(1), 10, "DEVISE_INCONNUE", "src", "reason")
 
+    async def test_leve_value_error_si_amount_negatif(self, prisma_tx: Prisma):
+        currency = await prisma_tx.currency.create(
+            {"name": "CREDIT_TEST_NEG", "claimRate": 1, "claimLimit": 100}
+        )
+        with pytest.raises(ValueError, match="positive"):
+            await credit_wallet(prisma_tx, _user(13), -10, currency.name, "system", "reward")
+
     async def test_credit_cree_un_log(self, prisma_tx: Prisma):
         currency = await prisma_tx.currency.create(
             {"name": "CREDIT_TEST_3", "claimRate": 1, "claimLimit": 100}
@@ -81,6 +88,14 @@ class TestBurnWallet:
     async def test_leve_value_error_si_devise_inconnue(self, prisma_tx: Prisma):
         with pytest.raises(ValueError):
             await burn_wallet(prisma_tx, _user(1), 10, "DEVISE_INCONNUE", "dst", "reason")
+
+    async def test_leve_value_error_si_amount_negatif(self, prisma_tx: Prisma):
+        currency = await prisma_tx.currency.create(
+            {"name": "BURN_TEST_NEG", "claimRate": 1, "claimLimit": 100}
+        )
+        await prisma_tx.wallet.create({"balance": 100, "currencyId": currency.id, "userId": 22})
+        with pytest.raises(ValueError, match="positive"):
+            await burn_wallet(prisma_tx, _user(22), -10, currency.name, "burned", "penalty")
 
     async def test_burn_cree_un_log(self, prisma_tx: Prisma):
         currency = await prisma_tx.currency.create(
@@ -122,6 +137,14 @@ class TestTransferWallet:
     async def test_leve_value_error_si_devise_inconnue(self, prisma_tx: Prisma):
         with pytest.raises(ValueError):
             await transfer_wallet(prisma_tx, 1, -1, 10, "DEVISE_INCONNUE", "reason")
+
+    async def test_leve_value_error_si_amount_negatif(self, prisma_tx: Prisma):
+        currency = await prisma_tx.currency.create(
+            {"name": "TRANSFER_TEST_NEG", "claimRate": 1, "claimLimit": 100}
+        )
+        await prisma_tx.wallet.create({"balance": 100, "currencyId": currency.id, "userId": 33})
+        with pytest.raises(ValueError, match="positive"):
+            await transfer_wallet(prisma_tx, 33, -33, -10, currency.name, "bet placed")
 
     # NB: la contrainte CHECK balance_non_negative vit dans une migration SQL
     # brute, pas dans schema.prisma — `prisma db push` (utilisé par les tests)
