@@ -4,7 +4,6 @@
 #
 #    pip-compile --allow-unsafe --generate-hashes --no-index --output-file=requirements.txt --trusted-host=10.10.0.3 requirements.in
 #
---extra-index-url http://deploy:***REVOKED***@10.10.0.3:8081/simple/
 --trusted-host 10.10.0.3
 
 aiofiles==25.1.0 \
