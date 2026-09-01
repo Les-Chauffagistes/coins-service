@@ -1,9 +1,10 @@
 """Tests d'intégration pour src/v1/services/balance.py"""
 import pytest
-from authentication_types.models import User
+from chauff_cmn.models import User
 from prisma import Prisma
 
 from src.v1.services.balance import get_balance, get_balance_by_id
+from src.v1.errors import CurrencyNotFoundError
 
 
 def _user(user_id: int = 1) -> User:
@@ -29,8 +30,9 @@ class TestGetBalance:
         assert result == 250
 
     async def test_leve_value_error_si_devise_inconnue(self, prisma_tx: Prisma):
-        with pytest.raises(ValueError):
-            await get_balance(prisma_tx, _user(1), "DEVISE_INEXISTANTE")
+        user = _user(1)
+        with pytest.raises(CurrencyNotFoundError):
+            await get_balance(prisma_tx, user, "DEVISE_INEXISTANTE")
 
     async def test_isolation_par_utilisateur(self, prisma_tx: Prisma):
         """Deux utilisateurs sur la même devise ont des soldes indépendants."""
@@ -61,5 +63,5 @@ class TestGetBalanceById:
         assert await get_balance_by_id(prisma_tx, -999, "BAL_TEST_5") == 0
 
     async def test_leve_value_error_si_devise_inconnue(self, prisma_tx: Prisma):
-        with pytest.raises(ValueError):
+        with pytest.raises(CurrencyNotFoundError):
             await get_balance_by_id(prisma_tx, -1, "DEVISE_INEXISTANTE")

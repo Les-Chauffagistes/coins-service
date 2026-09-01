@@ -1,21 +1,22 @@
 from json import JSONDecodeError
-
-from authentication_types.models import User
 from aiohttp.web import Request, json_response, HTTPOk, HTTPNoContent
+from prisma import Prisma
 from prisma.errors import DataError
 from pydantic import ValidationError
-from init import app, log
-from prisma import Prisma
+from chauff_cmn.models import User
+from chauff_cmn.logging import logger as log
+from init import app
 from src.middlewares.get_user import get_user
 from src.middlewares.authorization import require_auth
 
-from ..services.balance import get_balance, get_balance_by_id
 from ..schemas.transactionPayload import CreditPayload, BurnPayload, TransferPayload
 from ..app import routes
+from ..services.balance import get_balance, get_balance_by_id
 from ..services.claim import claim as claim_service, get_claimable, ClaimConflictError
-from ..services.transaction import burn_wallet, credit_wallet, transfer_wallet
-from ..services.idempotency import get_idempotency_status, store_idempotency_key
-from ..errors import missing_currency_error
+from ..services.transaction import burn as burn_service, credit as credit_service, transfer as transfer_service
+from ..services.idempotency import get_idempotency_status
+from ..errors import missing_currency_error, json_parse_error, bad_request_error, currency_not_found_error
+
 
 @routes.get("/claim")
 @require_auth
@@ -35,7 +36,7 @@ async def claim(request: Request):
         return json_response({"error": "concurrent claim, retry"}, status=409)
 
     except ValueError:
-        return json_response({"error": "currency not found"}, status=400)
+        return currency_not_found_error
 
 @routes.post("/credit")
 @require_auth
@@ -47,18 +48,16 @@ async def credit(request: Request):
         payload = await request.json()
         parsed_payload = CreditPayload(**payload)
     except JSONDecodeError:
-        return json_response({"error": "pasing json failed"}, status=400)
+        return json_parse_error
     except ValidationError:
         log.exception("")
-        return json_response({"error": "bad request"}, status=400)
+        return bad_request_error
 
     existing_status = await get_idempotency_status(prisma, parsed_payload.idempotencyKey, int(user.user_id))
     if existing_status is not None:
         return json_response(None, status=existing_status)
 
-    async with prisma.tx() as tx:
-        await credit_wallet(tx, user, parsed_payload.amount, parsed_payload.currency, parsed_payload.source, parsed_payload.reason)
-        await store_idempotency_key(tx, parsed_payload.idempotencyKey, int(user.user_id), 200)
+    await credit_service(prisma, user, parsed_payload.amount, parsed_payload.currency, parsed_payload.source, parsed_payload.reason, parsed_payload.idempotencyKey, 200)
     return HTTPOk()
 
 @routes.delete("/burn")
@@ -71,19 +70,17 @@ async def burn(request: Request):
         payload = await request.json()
         parsed_payload = BurnPayload(**payload)
     except JSONDecodeError:
-        return json_response({"error": "pasing json failed"}, status=400)
-    except ValidationError:
-        log.error()
-        return json_response({"error": "bad request"}, status=400)
+        return json_parse_error
+    except ValidationError as e:
+        log.error(e)
+        return bad_request_error
 
     existing_status = await get_idempotency_status(prisma, parsed_payload.idempotencyKey, int(user.user_id))
     if existing_status is not None:
         return json_response(None, status=existing_status)
 
     try:
-        async with prisma.tx() as tx:
-            await burn_wallet(tx, user, parsed_payload.amount, parsed_payload.currency, parsed_payload.destination, parsed_payload.reason)
-            await store_idempotency_key(tx, parsed_payload.idempotencyKey, int(user.user_id), 204)
+        await burn_service(prisma, user, parsed_payload.amount, parsed_payload.currency, parsed_payload.destination, parsed_payload.reason, parsed_payload.idempotencyKey, 204)
     except DataError:
         return json_response({"error": "insufficient balance"}, status=400)
     except ValueError as e:
@@ -104,29 +101,31 @@ async def transfer(request: Request):
         payload = await request.json()
         parsed_payload = TransferPayload(**payload)
     except JSONDecodeError:
-        return json_response({"error": "pasing json failed"}, status=400)
-    except ValidationError:
-        log.error()
-        return json_response({"error": "bad request"}, status=400)
+        return json_parse_error
+    except ValidationError as e:
+        log.error(e)
+        return bad_request_error
 
     existing_status = await get_idempotency_status(prisma, parsed_payload.idempotencyKey, parsed_payload.fromUserId)
     if existing_status is not None:
         return json_response(None, status=existing_status)
 
     try:
-        async with prisma.tx() as tx:
-            await transfer_wallet(
-                tx,
-                parsed_payload.fromUserId,
-                parsed_payload.toUserId,
-                parsed_payload.amount,
-                parsed_payload.currency,
-                parsed_payload.reason,
-            )
-            await store_idempotency_key(tx, parsed_payload.idempotencyKey, parsed_payload.fromUserId, 204)
-    except DataError:
+        await transfer_service(
+            prisma,
+            parsed_payload.fromUserId,
+            parsed_payload.toUserId,
+            parsed_payload.amount,
+            parsed_payload.currency,
+            parsed_payload.reason,
+            parsed_payload.idempotencyKey,
+            204,
+        )
+    except DataError as e:
+        log.error(e)
         return json_response({"error": "insufficient balance"}, status=400)
     except ValueError as e:
+        log.error(e)
         return json_response({"error": str(e)}, status=400)
     return HTTPNoContent()
 

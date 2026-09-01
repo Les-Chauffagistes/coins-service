@@ -2,7 +2,7 @@ from os import getenv
 from src.database.prisma import close_prisma, init_prisma
 from src.middlewares.logger import error_handler
 from src.middlewares.cors import cors_middleware
-from chauff_cmn.logging import configure, logger as log
+from chauff_cmn.logging import configure
 from chauff_cmn.logging.aiohttp import request_logging_middleware
 from chauff_cmn.tracing import setup_tracing, shutdown_tracing
 from aiohttp.web import Application, RouteTableDef

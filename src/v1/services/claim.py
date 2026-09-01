@@ -1,9 +1,10 @@
-from authentication_types.models import User
+from chauff_cmn.models import User
 from prisma import Prisma
 from prisma.errors import UniqueViolationError
 from prisma.models import Claim, Currency
 from datetime import datetime, timezone
 
+from ..errors import CurrencyNotFoundError
 from ..services.transaction import add_to_wallet
 
 
@@ -39,7 +40,7 @@ async def get_last_claim(db: Prisma, user: User, currency: Currency):
 async def get_currency_by_name(db: Prisma, currency_name: str) -> Currency:
     currency = await db.currency.find_unique(where={"name": currency_name})
     if not currency:
-        raise ValueError("Currency not found")
+        raise CurrencyNotFoundError()
     return currency
 
 

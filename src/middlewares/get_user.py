@@ -1,10 +1,9 @@
-from aiohttp.web import StreamResponse, HTTPServiceUnavailable, HTTPUnauthorized
+from aiohttp.web import StreamResponse, HTTPUnauthorized
 from aiohttp.web_request import Request
-from aiohttp import ClientSession
 from typing import Awaitable, Callable
 from functools import wraps
 from src.settings import settings
-from authentication_types.models import User
+from chauff_cmn.models import User
 import jwt
 
 def get_user(handler: Callable[[Request], Awaitable[StreamResponse]]):

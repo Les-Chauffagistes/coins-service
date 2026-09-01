@@ -1,5 +1,5 @@
 from prisma.models import Currency
-from authentication_types.models import User
+from chauff_cmn.models import User
 from prisma import Prisma
 
 

@@ -2,13 +2,11 @@ from aiohttp.web import middleware, StreamResponse
 from aiohttp.web_exceptions import HTTPException
 from aiohttp.web_request import Request
 from typing import Awaitable, Callable
+from chauff_cmn.logging import logger as log
 
 
 @middleware
 async def error_handler(request: Request, handler: Callable[[Request], Awaitable[StreamResponse]]) -> StreamResponse:
-    import init as hs_init
-    log = hs_init.log
-
     try:
         return await handler(request)
 

@@ -1,6 +1,7 @@
 import signal
 
-from init import routes, app, log
+from init import routes, app
+from chauff_cmn.logging import logger as log
 from src.settings import settings
 from aiohttp import web
 from asyncio import Event, get_running_loop, new_event_loop, set_event_loop

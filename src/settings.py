@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     api_token: str
     jwt_secret: str
 
-    model_config = {"env_file": ".env"}
+    model_config = {"env_file": ".env", "extra": "allow"}
 
 
 settings = Settings()  # type: ignore[call-arg]

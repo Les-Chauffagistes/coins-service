@@ -9,11 +9,12 @@ import asyncio
 import pytest
 from datetime import datetime, timezone, timedelta
 from unittest.mock import patch
-from authentication_types.models import User
+from chauff_cmn.models import User
 from prisma import Prisma
 
 from src.v1.services import claim as claim_module
 from src.v1.services.claim import get_claimable, get_claimable_for_currency, claim, ClaimConflictError
+from src.v1.errors import CurrencyNotFoundError
 
 
 def _user(user_id: int = 1) -> User:
@@ -67,8 +68,9 @@ class TestGetClaimable:
             await prisma_client.currency.delete(where={"id": currency.id})
 
     async def test_leve_value_error_si_devise_inconnue(self, prisma_client: Prisma):
-        with pytest.raises(ValueError):
-            await get_claimable(prisma_client, _user(1), "DEVISE_INEXISTANTE_XYZ")
+        user = _user(1)
+        with pytest.raises(CurrencyNotFoundError):
+            await get_claimable(prisma_client, user, "DEVISE_INEXISTANTE_XYZ")
 
 
 class TestClaim:

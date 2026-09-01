@@ -1,3 +1,6 @@
+[tool.pyrefly]
+search-path = ["."]
+
 [tool.pytest.ini_options]
 addopts = "-s"
 pythonpath = ["."]
