@@ -3,7 +3,7 @@ import pytest
 from authentication_types.models import User
 from prisma import Prisma
 
-from src.v1.services.balance import get_balance
+from src.v1.services.balance import get_balance, get_balance_by_id
 
 
 def _user(user_id: int = 1) -> User:
@@ -42,3 +42,24 @@ class TestGetBalance:
 
         assert await get_balance(prisma_tx, _user(1), "BAL_TEST_3") == 100
         assert await get_balance(prisma_tx, _user(2), "BAL_TEST_3") == 200
+
+
+class TestGetBalanceById:
+    async def test_lit_le_solde_d_un_compte_systeme_negatif(self, prisma_tx: Prisma):
+        """Les comptes escrow n'ont pas de User/JWT : accès direct par id."""
+        currency = await prisma_tx.currency.create(
+            {"name": "BAL_TEST_4", "claimRate": 1, "claimLimit": 100}
+        )
+        await prisma_tx.wallet.create({"balance": 42, "currencyId": currency.id, "userId": -7})
+
+        assert await get_balance_by_id(prisma_tx, -7, "BAL_TEST_4") == 42
+
+    async def test_retourne_zero_si_pas_de_wallet(self, prisma_tx: Prisma):
+        await prisma_tx.currency.create(
+            {"name": "BAL_TEST_5", "claimRate": 1, "claimLimit": 100}
+        )
+        assert await get_balance_by_id(prisma_tx, -999, "BAL_TEST_5") == 0
+
+    async def test_leve_value_error_si_devise_inconnue(self, prisma_tx: Prisma):
+        with pytest.raises(ValueError):
+            await get_balance_by_id(prisma_tx, -1, "DEVISE_INEXISTANTE")
