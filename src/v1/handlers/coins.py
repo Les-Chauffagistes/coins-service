@@ -49,7 +49,7 @@ async def credit(request: Request):
     except JSONDecodeError:
         return json_response({"error": "pasing json failed"}, status=400)
     except ValidationError:
-        log.error()
+        log.exception("")
         return json_response({"error": "bad request"}, status=400)
 
     existing_status = await get_idempotency_status(prisma, parsed_payload.idempotencyKey, int(user.user_id))

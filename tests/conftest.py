@@ -1,7 +1,6 @@
 from prisma import Prisma
 import pytest_asyncio
 import pytest
-from src.modules.logger.logger import Logger
 from dotenv import load_dotenv
 import subprocess, os, sys
 from shutil import which
@@ -87,8 +86,3 @@ async def prisma_tx(prisma_client: Prisma):
 
     finally:
         await tx.rollback()
-
-@pytest.fixture
-def log():
-    log = Logger()
-    yield log

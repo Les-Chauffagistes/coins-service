@@ -9,9 +9,10 @@ on:
 
 jobs:
   test:
-    uses: Les-Chauffagistes/deploy/.github/workflows/test.yml@2e32eae14ae1affc59d3b271735fb5fb0e7e4fb3
+    uses: Les-Chauffagistes/deploy/.github/workflows/test.yml@678d0d8997838fd5b45db433926d92c1e56d80ce
     with:
       python-version: '3.12'
+    secrets: inherit
 
 
   build-push:
