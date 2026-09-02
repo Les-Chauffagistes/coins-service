@@ -2,36 +2,16 @@ from aiohttp.web import middleware, StreamResponse
 from aiohttp.web_exceptions import HTTPException
 from aiohttp.web_request import Request
 from typing import Awaitable, Callable
+from chauff_cmn.logging import logger as log
 
 
 @middleware
 async def error_handler(request: Request, handler: Callable[[Request], Awaitable[StreamResponse]]) -> StreamResponse:
-    import init as hs_init
-    log = hs_init.log
-    method = request.method
-    match method:
-        case "GET":
-            log_request = log.get
-
-        case "POST":
-            log_request = log.post
-
-        case "DELETE":
-            log_request = log.delete
-
-        case _:
-            log_request = log.info
-
-    status = None
     try:
-        response = await handler(request)
-        status = response.status
-        return response
+        return await handler(request)
 
-    except HTTPException as e:
-        status = e.status_code
-        log.error("Request error")
+    except HTTPException:
+        # Le log JSON structuré (méthode, chemin, statut, durée) est désormais
+        # émis par chauff_cmn.logging.aiohttp.request_logging_middleware.
+        log.exception("Request error")
         raise
-
-    finally:
-        log_request(request.path, status if status is not None else "ERROR")

@@ -26,17 +26,17 @@ class TestComputeClaimable:
         assert result == 100
 
     def test_accumulation_lineaire(self):
-        """Les tokens s'accumulent au rythme de claimRate par seconde."""
-        currency = _currency(claim_rate=1, claim_limit=1000)
+        """Les tokens s'accumulent au rythme de claimRate par heure."""
+        currency = _currency(claim_rate=120, claim_limit=1000)
         now = datetime.now(timezone.utc)
-        last = _claim(now - timedelta(seconds=50))
-        assert _compute_claimable(now, last, currency) == 50
+        last = _claim(now - timedelta(minutes=30))
+        assert _compute_claimable(now, last, currency) == 60
 
     def test_plafonnement_par_claim_limit(self):
         """On ne peut jamais dépasser claimLimit, même après longtemps."""
         currency = _currency(claim_rate=10, claim_limit=100)
         now = datetime.now(timezone.utc)
-        last = _claim(now - timedelta(seconds=10_000))
+        last = _claim(now - timedelta(hours=100))
         assert _compute_claimable(now, last, currency) == 100
 
     def test_zero_secondes_ecoulees(self):
@@ -47,16 +47,16 @@ class TestComputeClaimable:
         assert _compute_claimable(now, last, currency) == 0
 
     def test_partie_decimale_tronquee(self):
-        """int() tronque : 1.9 s × 1 rate = 1 token (pas 2)."""
+        """int() tronque : 1 h 54 × 1 rate = 1 token (pas 2)."""
         currency = _currency(claim_rate=1, claim_limit=1000)
         now = datetime.now(timezone.utc)
-        last = _claim(now - timedelta(seconds=1, milliseconds=900))
+        last = _claim(now - timedelta(hours=1, minutes=54))
         assert _compute_claimable(now, last, currency) == 1
 
     def test_claim_rate_eleve(self):
-        """Vérifie que rate × secondes est bien borné par la limite."""
+        """Vérifie que rate × heures est bien borné par la limite."""
         currency = _currency(claim_rate=100, claim_limit=500)
         now = datetime.now(timezone.utc)
-        # 3 s × 100 = 300, en-dessous du plafond
-        last = _claim(now - timedelta(seconds=3))
+        # 3 h × 100 = 300, en-dessous du plafond
+        last = _claim(now - timedelta(hours=3))
         assert _compute_claimable(now, last, currency) == 300
