@@ -6,7 +6,7 @@ currency_not_found_error = json_response({"error": "currency not found"}, status
 json_parse_error = json_response({"error": "parsing json failed"}, status=400)
 bad_request_error = json_response({"error": "bad request"}, status=400)
 
-class CurrencyNotFoundError(Exception):
+class CurrencyNotFoundError(ValueError):
     pass
 
 class CurrencyValueError(ValueError):
