@@ -16,6 +16,9 @@ RUN --mount=type=secret,id=pipindex \
     PIP_EXTRA_INDEX_URL="$(cat /run/secrets/pipindex 2>/dev/null || true)" \
     pip install --no-cache-dir --require-hashes --only-binary :all: --trusted-host 10.10.0.3 -r requirements.txt
 
+# Node pinné : nodeenv résout sinon la "dernière" version, ce qui casse en CI (ValueError '0-alpha')
+RUN python -m nodeenv /opt/prisma-cache/nodeenv --node=20.18.0
+
 COPY prisma ./prisma
 # Génère le client ET bake le query engine + la CLI Node dans le cache partagé
 RUN prisma generate
