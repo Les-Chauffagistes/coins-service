@@ -4,6 +4,8 @@ WORKDIR /app
 
 # Cache Prisma partagé (query engine + CLI Node), chemin fixe et indépendant du HOME
 ENV PRISMA_BINARY_CACHE_DIR=/opt/prisma-cache
+# Node (nodeenv) installé au build dans le même cache, sinon téléchargé au runtime dans $HOME/.cache
+ENV PRISMA_NODEENV_CACHE_DIR=/opt/prisma-cache/nodeenv
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc libpq-dev \
@@ -27,6 +29,8 @@ WORKDIR /app
 ENV PYTHONUNBUFFERED=1
 # Même chemin de cache qu'au build : Prisma trouve les binaires bakés au lieu de les réinstaller au runtime
 ENV PRISMA_BINARY_CACHE_DIR=/opt/prisma-cache
+# Node (nodeenv) installé au build dans le même cache, sinon téléchargé au runtime dans $HOME/.cache
+ENV PRISMA_NODEENV_CACHE_DIR=/opt/prisma-cache/nodeenv
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl libatomic1 libpq5 \
