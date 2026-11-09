@@ -60,7 +60,7 @@ HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
 
 CMD ["sh", "-c", "\
   export DB_PASSWORD=$(cat /run/secrets/db_password) && \
-  export DATABASE_URL=postgresql://coins:${DB_PASSWORD}@${DB_HOST:-coins-staging-db}:5432/coins && \
+  export DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:5432/${DB_NAME} && \
   export API_TOKEN=$(cat /run/secrets/api_key) && \
   export JWT_SECRET=$(cat /run/secrets/jwt_secret) && \
   until prisma migrate deploy; do echo 'DB pas prête, retry...'; sleep 2; done && \
