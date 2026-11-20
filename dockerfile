@@ -14,7 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN --mount=type=secret,id=pipindex \
     PIP_EXTRA_INDEX_URL="$(cat /run/secrets/pipindex 2>/dev/null || true)" \
-    pip install --no-cache-dir --require-hashes --only-binary :all: --trusted-host 10.10.0.3 -r requirements.txt
+    pip install --no-cache-dir --require-hashes --only-binary :all: --trusted-host 172.16.0.1 -r requirements.txt
 
 # Node pinné : nodeenv résout sinon la "dernière" version, ce qui casse en CI (ValueError '0-alpha')
 RUN python -m nodeenv /opt/prisma-cache/nodeenv --node=20.18.0
