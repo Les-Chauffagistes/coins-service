@@ -4,6 +4,8 @@ WORKDIR /app
 
 # Cache Prisma partagé (query engine + CLI Node), chemin fixe et indépendant du HOME
 ENV PRISMA_BINARY_CACHE_DIR=/opt/prisma-cache
+# Node (nodeenv) installé au build dans le même cache, sinon téléchargé au runtime dans $HOME/.cache
+ENV PRISMA_NODEENV_CACHE_DIR=/opt/prisma-cache/nodeenv
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc libpq-dev \
@@ -13,6 +15,9 @@ COPY requirements.txt .
 RUN --mount=type=secret,id=pipindex \
     PIP_EXTRA_INDEX_URL="$(cat /run/secrets/pipindex 2>/dev/null || true)" \
     pip install --no-cache-dir --require-hashes --only-binary :all: --trusted-host 10.10.0.3 -r requirements.txt
+
+# Node pinné : nodeenv résout sinon la "dernière" version, ce qui casse en CI (ValueError '0-alpha')
+RUN python -m nodeenv /opt/prisma-cache/nodeenv --node=20.18.0
 
 COPY prisma ./prisma
 # Génère le client ET bake le query engine + la CLI Node dans le cache partagé
@@ -27,6 +32,8 @@ WORKDIR /app
 ENV PYTHONUNBUFFERED=1
 # Même chemin de cache qu'au build : Prisma trouve les binaires bakés au lieu de les réinstaller au runtime
 ENV PRISMA_BINARY_CACHE_DIR=/opt/prisma-cache
+# Node (nodeenv) installé au build dans le même cache, sinon téléchargé au runtime dans $HOME/.cache
+ENV PRISMA_NODEENV_CACHE_DIR=/opt/prisma-cache/nodeenv
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl libatomic1 libpq5 \
@@ -53,7 +60,7 @@ HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
 
 CMD ["sh", "-c", "\
   export DB_PASSWORD=$(cat /run/secrets/db_password) && \
-  export DATABASE_URL=postgresql://coins:${DB_PASSWORD}@${DB_HOST:-coins-staging-db}:5432/coins && \
+  export DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:5432/${DB_NAME} && \
   export API_TOKEN=$(cat /run/secrets/api_key) && \
   export JWT_SECRET=$(cat /run/secrets/jwt_secret) && \
   until prisma migrate deploy; do echo 'DB pas prête, retry...'; sleep 2; done && \

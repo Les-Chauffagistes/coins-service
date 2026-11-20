@@ -9,7 +9,7 @@ on:
 
 jobs:
   test:
-    uses: Les-Chauffagistes/deploy/.github/workflows/test.yml@678d0d8997838fd5b45db433926d92c1e56d80ce
+    uses: Les-Chauffagistes/deploy/.github/workflows/test.yml@9f247961240048bbf11a3a3663396cf9122c55d7
     with:
       python-version: '3.12'
     secrets: inherit
@@ -18,7 +18,7 @@ jobs:
   build-push:
     if: github.event_name == 'push'
     needs: test
-    uses: Les-Chauffagistes/deploy/.github/workflows/build.yml@f2251700b5b235a3965d6bb793a63e63cd43e673
+    uses: Les-Chauffagistes/deploy/.github/workflows/build.yml@9f247961240048bbf11a3a3663396cf9122c55d7
     with:
       service-name: coins-service
     secrets:
